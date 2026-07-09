@@ -45,6 +45,8 @@ CALLOUT_TYPE_COLORS = {
 
 # Gallery 核心主题列表（按用途分类，不存在的会跳过）
 GALLERY_THEMES = [
+    # Xinghe personal IP default theme
+    "xinghe-light",
     # 2026-06-12 合并去重：59→34，砍掉 25 款"同骨架换色"的重复变体（文件保留在 themes/，仅移出 gallery）
     # 新主题候选（2026-06-12 新做：数据简报/圆桌访谈/极简文档/琉璃）
     "data-report", "interview", "notion-doc", "glass-light",

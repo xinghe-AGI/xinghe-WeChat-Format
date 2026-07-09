@@ -109,7 +109,7 @@ python3 <本仓库>/scripts/generate.py \
   --out <目标目录>/cover.jpg
 ```
 
-> `<本仓库>` 和 `<本技能目录>` 请替换为你本地实际安装路径。如果你通过 `claude install` 安装，路径一般是 `~/.claude/skills/xiaohu-wechat-format/`。
+> `<本仓库>` 和 `<本技能目录>` 请替换为你本地实际安装路径。如果你通过 `claude install` 安装，路径一般是 `~/.claude/skills/xinghe-wechat-format/`。
 
 生成完成后展示给用户预览。不满意就调整内容主题描述重新生成。
 
