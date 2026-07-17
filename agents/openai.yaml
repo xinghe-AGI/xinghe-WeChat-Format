@@ -1,0 +1,8 @@
+interface:
+  display_name: "xinghe-WeChat-Format"
+  short_description: "将中文文章排成三种星禾风格的微信公众号 HTML"
+  brand_color: "#E46F2E"
+  default_prompt: "使用 $xinghe-wechat-format 将这篇文章排版为星禾风格的微信公众号预览。"
+
+policy:
+  allow_implicit_invocation: true

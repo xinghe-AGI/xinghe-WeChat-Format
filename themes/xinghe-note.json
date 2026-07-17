@@ -1,0 +1,59 @@
+{
+  "extends": "xinghe-light",
+  "name": "星禾轻笔记",
+  "description": "更轻、更松弛的星禾笔记排版，弱化卡片边界，适合方法论、复盘、随笔和个人观察。",
+  "colors": {
+    "background": "#FBFCFE",
+    "blockquote_bg": "#FFF9E8"
+  },
+  "styles": {
+    "wrapper": {
+      "background_color": "#FBFCFE",
+      "padding": "16px 14px"
+    },
+    "h1": {
+      "padding": "8px 0 14px",
+      "border": "none",
+      "border_bottom": "2px solid rgba(228, 111, 46, 0.42)",
+      "border_radius": "0",
+      "background": "transparent",
+      "box_shadow": "none"
+    },
+    "h2": {
+      "padding": "0 0 7px",
+      "border_left": "none",
+      "border_bottom": "2px solid #E46F2E"
+    },
+    "h3": {
+      "padding": "0",
+      "border": "none",
+      "border_radius": "0",
+      "background": "transparent"
+    },
+    "p": {
+      "line_height": "1.88",
+      "margin_bottom": "20px",
+      "text_align": "left"
+    },
+    "blockquote": {
+      "background": "#FFF9E8",
+      "border": "none",
+      "border_left": "4px solid #F2C94C",
+      "border_radius": "0 8px 8px 0"
+    },
+    "img_wrapper": {
+      "padding": "3px",
+      "box_shadow": "none",
+      "border": "1px solid rgba(73, 104, 130, 0.12)"
+    },
+    "callout": {
+      "background": "#F3F7FA",
+      "box_shadow": "none"
+    }
+  },
+  "dark_mode": {
+    "root": {
+      "data-style": "background-color:#FBFCFE"
+    }
+  }
+}

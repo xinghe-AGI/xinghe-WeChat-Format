@@ -43,32 +43,11 @@ CALLOUT_TYPE_COLORS = {
     "callout":   None,  # 默认用主题色，不覆盖
 }
 
-# Gallery 核心主题列表（按用途分类，不存在的会跳过）
+# 星禾精选主题。画廊只展示这三个稳定入口。
 GALLERY_THEMES = [
-    # Xinghe personal IP default theme
     "xinghe-light",
-    # 2026-06-12 合并去重：59→34，砍掉 25 款"同骨架换色"的重复变体（文件保留在 themes/，仅移出 gallery）
-    # 新主题候选（2026-06-12 新做：数据简报/圆桌访谈/极简文档/琉璃）
-    "data-report", "interview", "notion-doc", "glass-light",
-    # 纸系·Kami（衬线骨架，保留代表色，原 3→1）
-    "kami-ink",
-    # 新做精选（各骨架代表，原 14→8）
-    "claude-scroll", "swiss-grid", "pastel-dream", "brutalism-raw",
-    "blueprint", "academic-paper", "industrial", "magazine-serif",
-    # 特色布局（hero 16 个色变体合并为 3 个代表：靛紫/深海暗/禅极简，原 17→4）
-    "hero-purple", "dark-ocean", "timeline-green", "zen-minimal",
-    # 卡片系列（原 5→3）
-    "warm-card", "apple-gradient", "cyber-neon",
-    # 深度长文（4，均独特骨架）
-    "newspaper", "magazine", "ink", "coffee-house",
-    # 科技产品（4，均独特骨架）
-    "bytedance", "github", "sspai", "midnight",
-    # 文艺随笔（原 4→2）
-    "terracotta", "mint-fresh",
-    # 活力动态（4，均独特骨架）
-    "sports", "bauhaus", "chinese", "wechat-native",
-    # 模板布局（4，均独特骨架）
-    "minimal-gold", "focus-blue", "elegant-green", "bold-blue",
+    "xinghe-card",
+    "xinghe-note",
 ]
 
 # Gallery 示例文章（写死，不用用户文章）
@@ -115,7 +94,11 @@ SKILL_DIR = SCRIPT_DIR.parent
 THEMES_DIR = SKILL_DIR / "themes"
 TEMPLATE_DIR = SKILL_DIR / "templates"
 
-with open(SKILL_DIR / "config.json", encoding="utf-8") as f:
+CONFIG_PATH = SKILL_DIR / "config.json"
+if not CONFIG_PATH.exists():
+    CONFIG_PATH = SKILL_DIR / "config.example.json"
+
+with open(CONFIG_PATH, encoding="utf-8") as f:
     CONFIG = json.load(f)
 
 OUTPUT_DIR = Path(CONFIG["output_dir"])
@@ -131,17 +114,47 @@ HEADER_AUTHOR = (
 
 
 # ── 主题加载 ────────────────────────────────────────────────────────────
+def _deep_merge_theme(base: dict, override: dict) -> dict:
+    """递归合并主题配置，让星禾变体只维护差异字段。"""
+    result = dict(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(result.get(key), dict):
+            result[key] = _deep_merge_theme(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+def _load_theme_file(theme_path: Path, seen: set[str]) -> dict:
+    theme_id = theme_path.stem
+    if theme_id in seen:
+        chain = " -> ".join([*seen, theme_id])
+        raise ValueError(f"主题继承形成循环: {chain}")
+
+    with open(theme_path, encoding="utf-8") as f:
+        data = json.load(f)
+
+    parent_id = data.pop("extends", None)
+    if not parent_id:
+        return data
+
+    parent_path = THEMES_DIR / f"{parent_id}.json"
+    if not parent_path.exists():
+        raise ValueError(f"主题 '{theme_id}' 继承的 '{parent_id}' 不存在")
+    parent = _load_theme_file(parent_path, seen | {theme_id})
+    return _deep_merge_theme(parent, data)
+
+
 def load_theme(theme_name: str) -> dict:
-    """加载主题。支持三种格式：
-    1. 传统主题名: 'terracotta' → themes/terracotta.json
-    2. 矩阵组合名: 'accent-ocean' → layouts/accent.json + palettes/ocean.json 合并
-    3. 如果都找不到，报错
-    """
-    # 1. 先尝试传统主题
+    """加载主题 JSON，支持通过 extends 继承一个基础主题。"""
+    # 1. 尝试主题文件
     theme_path = THEMES_DIR / f"{theme_name}.json"
     if theme_path.exists():
-        with open(theme_path, encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            return _load_theme_file(theme_path, set())
+        except (ValueError, json.JSONDecodeError) as exc:
+            print(f"错误: 无法加载主题 '{theme_name}': {exc}")
+            sys.exit(1)
 
     # 2. 尝试矩阵组合
     if "-" in theme_name:
@@ -325,7 +338,7 @@ def _localize_image(img_path: Path, images_dir: Path) -> str:
                 return png_name
         except Exception:
             pass
-        print(f"[SVG] ⚠ {img_path.name} 转 PNG 失败，已按原样复制——公众号后台无法上传 SVG，请手动转换")
+        print(f"[SVG][warn] {img_path.name} 转 PNG 失败，已按原样复制——公众号后台无法上传 SVG，请手动转换")
     dest = images_dir / img_path.name
     if not dest.exists():
         shutil.copy2(img_path, dest)
@@ -378,7 +391,7 @@ def copy_markdown_images(text: str, input_dir: Path, output_dir: Path) -> str:
         # 跳过外链（http/https）；外链 SVG 公众号转存会失败，提前警告
         if src.startswith(("http://", "https://")):
             if src.split("?")[0].lower().endswith(".svg"):
-                print(f"[SVG] ⚠ 外链 SVG 图片公众号无法转存，请换 PNG/JPG: {src}")
+                print(f"[SVG][warn] 外链 SVG 图片公众号无法转存，请换 PNG/JPG: {src}")
             return match.group(0)
         # 解析相对路径，基于输入文件所在目录
         img_path = (input_dir / src).resolve()
@@ -433,121 +446,22 @@ def extract_links_as_footnotes(html: str) -> tuple[str, str]:
     return processed, fn_html
 
 
-_SMART_SYSTEM_PROMPT = """你是一个公众号排版预处理器。分析 Markdown 文章，在合适位置添加排版语义标记。
-
-可用标记（只能用这些）：
-1. `> [!important] 内容` — 核心判断高亮框，每节最多1个，全文最多3个
-2. `:::stat\n数字\n说明文字\n:::` — 数据亮点大字展示，全文最多2个
-3. `:::byline[作者名]\n内容\n:::` — 作者总结段落，只在文末使用
-4. `> — 作者名` — 引用块末尾的出处标注
-5. 保持 `**术语：** 解释` 格式的并列段落（3个以上连续时有效）
-
-规则：
-- 不改任何原文文字，只在原文周围添加标记
-- 如果文章已有 `> [!important]` 或 `> [!tip]` 等 callout，不再添加新的
-- 如果段落以 `**小互说：**` 开头且在文末，转成 `:::byline[小互说]`
-- 总标记数不超过 5 个/2000字
-- 输出完整的修改后 Markdown，不要输出解释"""
-
-
-def smart_enhance_markdown(content: str, config_path: Path) -> str:
-    """调用 AI 分析文章并注入语义标记。需要 config.json 中配置 smart_api。"""
-    import urllib.request
-
-    # 读取配置
-    try:
-        with open(config_path, encoding="utf-8") as f:
-            cfg = json.load(f)
-    except Exception:
-        cfg = {}
-
-    smart_cfg = cfg.get("settings", {}).get("smart_api") or cfg.get("smart_api")
-    if not smart_cfg:
-        print("错误: --smart 需要在 config.json 中配置 smart_api")
-        print('示例: { "smart_api": { "base_url": "https://api.openai.com/v1", "api_key": "sk-...", "model": "gpt-4o-mini" } }')
-        sys.exit(1)
-
-    base_url = smart_cfg["base_url"].rstrip("/")
-    api_key = smart_cfg["api_key"]
-    model = smart_cfg.get("model", "gpt-4o-mini")
-
-    # 预检：已有足够标记则跳过
-    existing = (
-        content.count("> [!important]") + content.count("> [!tip]") +
-        content.count(":::stat") + content.count(":::byline")
-    )
-    if existing >= 3:
-        print(f"  文章已有 {existing} 个排版标记，跳过 AI 分析")
-        return content
-
-    print("  AI 语义分析中...")
-
-    # 构建请求
-    payload = json.dumps({
-        "model": model,
-        "messages": [
-            {"role": "system", "content": _SMART_SYSTEM_PROMPT},
-            {"role": "user", "content": content}
-        ],
-        "temperature": 0.3,
-    }).encode("utf-8")
-
-    url = f"{base_url}/chat/completions"
-    req = urllib.request.Request(url, data=payload, method="POST")
-    req.add_header("Content-Type", "application/json")
-    req.add_header("Authorization", f"Bearer {api_key}")
-
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            result = json.loads(resp.read().decode("utf-8"))
-        enhanced = result["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        print(f"  AI 分析失败: {e}，使用原文")
-        return content
-
-    # 后验：检查 AI 是否改了原文文字（只允许加标记，不允许改内容）
-    # 简单检查：去掉所有标记后，剩余文字应与原文一致
-    def strip_markers(text):
-        text = re.sub(r'^> \[!(?:important|tip|warning|caution|note)\]\s*', '', text, flags=re.MULTILINE)
-        text = re.sub(r'^:::(?:stat|byline)(?:\[.*?\])?\s*$', '', text, flags=re.MULTILINE)
-        text = re.sub(r'^:::\s*$', '', text, flags=re.MULTILINE)
-        text = re.sub(r'^> —\s*.+$', '', text, flags=re.MULTILINE)
-        return re.sub(r'\n{3,}', '\n\n', text).strip()
-
-    original_text = strip_markers(content)
-    enhanced_text = strip_markers(enhanced)
-
-    # 允许小幅差异（AI 可能调整空行），用字符级相似度
-    if len(enhanced_text) < len(original_text) * 0.9:
-        print("  AI 输出内容偏差过大，使用原文")
-        return content
-
-    # 统计添加了多少标记
-    new_markers = (
-        enhanced.count("> [!important]") - content.count("> [!important]") +
-        enhanced.count(":::stat") - content.count(":::stat") +
-        enhanced.count(":::byline") - content.count(":::byline")
-    )
-    print(f"  AI 添加了 {new_markers} 个排版标记")
-    return enhanced
-
-
 def _auto_detect_byline(content: str) -> str:
-    """自动检测文末的 **小互说：** 或 ## 小互说，转为 :::byline 容器。"""
+    """自动检测文末的 **星禾说：** 或 ## 星禾说，转为 :::byline 容器。"""
     if ':::byline' in content:
         return content  # 已有容器，不重复转
 
-    # Pattern 1: ## 小互说 标题
-    match = re.search(r'^## 小互说\s*\n+(.+?)(?=\n## |\Z)', content, re.MULTILINE | re.DOTALL)
+    # Pattern 1: ## 星禾说 标题
+    match = re.search(r'^## 星禾说\s*\n+(.+?)(?=\n## |\Z)', content, re.MULTILINE | re.DOTALL)
     if match and match.start() > len(content) * 0.6:
         byline_text = match.group(1).strip()
-        return content[:match.start()] + f':::byline[小互说]\n{byline_text}\n:::\n' + content[match.end():]
+        return content[:match.start()] + f':::byline[星禾说]\n{byline_text}\n:::\n' + content[match.end():]
 
-    # Pattern 2: **小互说：** 内联
-    match = re.search(r'^\*\*小互说[：:]\*\*\s*(.+?)(?=\n\n|\Z)', content, re.MULTILINE | re.DOTALL)
+    # Pattern 2: **星禾说：** 内联
+    match = re.search(r'^\*\*星禾说[：:]\*\*\s*(.+?)(?=\n\n|\Z)', content, re.MULTILINE | re.DOTALL)
     if match and match.start() > len(content) * 0.6:
         byline_text = match.group(1).strip()
-        return content[:match.start()] + f':::byline[小互说]\n{byline_text}\n:::\n' + content[match.end():]
+        return content[:match.start()] + f':::byline[星禾说]\n{byline_text}\n:::\n' + content[match.end():]
 
     return content
 
@@ -911,7 +825,7 @@ def _build_stat_html(lines: list[str]) -> str:
 
 
 def _build_byline_html(author: str, lines: list[str]) -> str:
-    """构建作者总结容器 HTML（如"小互说"）"""
+    """构建作者总结容器 HTML（如“星禾说”）。"""
     content = "<br>".join(l.strip() for l in lines if l.strip())
     return (
         f'<section data-container="byline">'
@@ -2754,19 +2668,9 @@ def generate_gallery(rendered_map: dict, theme_map: dict,
 
     default_theme = theme_ids[0] if theme_ids else ""
 
-    # 生成 THEME_BUTTONS（带分组标签）
-    # 2026-06-12 合并去重后的分类（与 GALLERY_THEMES 同步，34 款）
+    # 生成 THEME_BUTTONS（只展示星禾主题）
     GROUPS = [
-        ("新主题候选", ["data-report", "interview", "notion-doc", "glass-light"]),
-        ("纸系·Kami", ["kami-ink"]),
-        ("新做精选", ["claude-scroll", "swiss-grid", "pastel-dream", "brutalism-raw", "blueprint", "academic-paper", "industrial", "magazine-serif"]),
-        ("特色布局", ["hero-purple", "dark-ocean", "timeline-green", "zen-minimal"]),
-        ("卡片系列", ["warm-card", "apple-gradient", "cyber-neon"]),
-        ("深度长文", ["newspaper", "magazine", "ink", "coffee-house"]),
-        ("科技产品", ["bytedance", "github", "sspai", "midnight"]),
-        ("文艺随笔", ["terracotta", "mint-fresh"]),
-        ("活力动态", ["sports", "bauhaus", "chinese", "wechat-native"]),
-        ("模板布局", ["minimal-gold", "focus-blue", "elegant-green", "bold-blue"]),
+        ("星禾排版", GALLERY_THEMES),
     ]
     buttons_html = ""
     btn_index = 0
@@ -2903,20 +2807,20 @@ def main():
     parser.add_argument("--input", "-i", required=True, help="输入 Markdown 文件路径")
     parser.add_argument("--theme", "-t", default=DEFAULT_THEME, help=f"主题名称（默认: {DEFAULT_THEME}）")
     parser.add_argument("--vault-root", default=str(VAULT_ROOT), help="Obsidian Vault 根目录")
+    parser.add_argument("--asset-root", default=None, help="标准 Markdown 相对图片的来源目录")
     parser.add_argument("--output", "-o", default=str(OUTPUT_DIR), help="输出目录")
     parser.add_argument("--no-open", action="store_true", help="不自动打开浏览器")
     parser.add_argument("--gallery", action="store_true", help="主题画廊模式：预览多个主题供选择")
     parser.add_argument("--recommend", nargs="*", default=[], help="推荐的主题ID列表（gallery中高亮显示）")
     parser.add_argument("--format", choices=["wechat", "html", "plain"], default="wechat",
                         help="输出格式: wechat(默认), html(标准HTML), plain(纯HTML)")
-    parser.add_argument("--smart", action="store_true",
-                        help="AI 语义增强：自动分析文章并添加排版标记（需 config.json 配置 smart_api）")
     parser.add_argument("--font-size", type=int, default=None,
                         help="正文字号（默认15px），如 --font-size 16")
     args = parser.parse_args()
 
     input_path = Path(args.input)
     vault_root = Path(args.vault_root)
+    asset_root = Path(args.asset_root).resolve() if args.asset_root else input_path.parent
     output_base = Path(args.output)
     theme_name = args.theme
 
@@ -2937,11 +2841,6 @@ def main():
 
     # 读取文章
     content = input_path.read_text(encoding="utf-8")
-
-    # --smart: AI 语义增强（在所有处理之前）
-    if args.smart:
-        config_path = SCRIPT_DIR.parent / "config.json"
-        content = smart_enhance_markdown(content, config_path)
 
     title = extract_title(content, input_path)
     word_count = count_words(content)
@@ -2978,7 +2877,7 @@ def main():
 
     output_dir.mkdir(parents=True, exist_ok=True)
     content = convert_wikilinks(content, vault_root, output_dir)
-    content = copy_markdown_images(content, input_path.parent, output_dir)
+    content = copy_markdown_images(content, asset_root, output_dir)
 
     html = md_to_html(content)
     html, footnote_html = extract_links_as_footnotes(html)
@@ -2991,11 +2890,11 @@ def main():
         if lint_script.exists():
             try:
                 r = subprocess.run(
-                    ["python3", str(lint_script)],
+                    [sys.executable, str(lint_script)],
                     capture_output=True, text=True, timeout=10,
                 )
                 if r.returncode != 0 and r.stdout.strip():
-                    print("[theme-lint] ⚠ 检测到字号问题(不阻断渲染):")
+                    print("[theme-lint][warn] 检测到字号问题(不阻断渲染):")
                     for line in r.stdout.strip().split("\n"):
                         print(f"  {line}")
                     print()
@@ -3009,8 +2908,7 @@ def main():
         for tid in GALLERY_THEMES:
             tp = THEMES_DIR / f"{tid}.json"
             if tp.exists():
-                with open(tp, encoding="utf-8") as f:
-                    theme_map[tid] = json.load(f)
+                theme_map[tid] = load_theme(tid)
 
         gallery_theme_ids = [tid for tid in GALLERY_THEMES if tid in theme_map]
 
@@ -3033,7 +2931,7 @@ def main():
             for future in as_completed(futures):
                 tid, rendered = future.result()
                 rendered_map[tid] = rendered
-                print(f"  ✓ {theme_map[tid].get('name', tid)} ({tid})")
+                print(f"  [ok] {theme_map[tid].get('name', tid)} ({tid})")
 
         gallery_path = generate_gallery(
             rendered_map, theme_map, gallery_theme_ids,

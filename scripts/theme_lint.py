@@ -41,6 +41,31 @@ MIN_LINE_HEIGHT = 1.7
 TIERS = ["h1", "h2", "h3", "h4"]
 
 
+def deep_merge(base, override):
+    result = dict(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(result.get(key), dict):
+            result[key] = deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+def load_theme(fp, seen=None):
+    seen = set() if seen is None else seen
+    if fp.stem in seen:
+        raise ValueError(f"主题继承形成循环: {fp.stem}")
+    with open(fp, encoding="utf-8") as f:
+        data = json.load(f)
+    parent_id = data.pop("extends", None)
+    if not parent_id:
+        return data
+    parent_path = THEMES_DIR / f"{parent_id}.json"
+    if not parent_path.exists():
+        raise ValueError(f"继承主题不存在: {parent_id}")
+    return deep_merge(load_theme(parent_path, seen | {fp.stem}), data)
+
+
 def parse_px(v):
     if not v:
         return None
@@ -122,8 +147,14 @@ def main():
             if not quiet:
                 print(f"[skip] {fp.name} 不存在")
             continue
-        with open(fp, encoding="utf-8") as f:
-            data = json.load(f)
+        try:
+            data = load_theme(fp)
+        except (ValueError, json.JSONDecodeError) as exc:
+            total_bad += 1
+            bad_themes.append(fp.stem)
+            if not quiet:
+                print(f"\n[{fp.stem}]\n  [warn] 主题加载失败: {exc}")
+            continue
         issues, infos = lint_theme(fp.stem, data)
         total_info += len(infos)
         if issues:
@@ -132,17 +163,17 @@ def main():
             if not quiet:
                 print(f"\n[{fp.stem}]")
                 for i in issues:
-                    print(f"  ⚠ {i}")
+                    print(f"  [warn] {i}")
                 for i in infos:
-                    print(f"  ℹ {i}")
+                    print(f"  [info] {i}")
 
     if not quiet:
         print()
         if total_bad == 0:
             extra = f"(另有 {total_info} 条 dark_mode 缺失提示)" if total_info else ""
-            print(f"✓ {len(theme_files)} 个主题全部通过 {extra}")
+            print(f"[ok] {len(theme_files)} 个主题全部通过 {extra}")
         else:
-            print(f"⚠ {len(bad_themes)} 个主题共 {total_bad} 处违规: {', '.join(bad_themes)}")
+            print(f"[warn] {len(bad_themes)} 个主题共 {total_bad} 处违规: {', '.join(bad_themes)}")
 
     return 0 if total_bad == 0 else 1
 

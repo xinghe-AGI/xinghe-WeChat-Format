@@ -1,98 +1,69 @@
 ---
 name: xinghe-wechat-format
-description: 将中文 Markdown、纯文本或粗糙笔记排版为星禾个人风格的微信公众号文章。用户要求公众号排版、微信排版、format、xinghe-WeChat-Format、发布草稿准备、星禾个人 IP 文章排版、封面衔接或公众号草稿箱发布时使用。默认使用 xinghe-light 主题，保留原文措辞；封面真实生图和微信公众号发布前必须获得用户明确确认。
+description: 将中文 Markdown、纯文本或粗糙笔记排版为星禾个人风格的微信公众号文章。用户要求公众号排版、微信排版、xinghe-WeChat-Format、星禾主题、封面衔接或公众号草稿箱发布时使用。提供 xinghe-light、xinghe-card、xinghe-note 三种主题；默认保留原文措辞和源文件，封面真实生图与发布前必须获得明确确认。
 ---
 
 # xinghe-WeChat-Format
 
-这个 skill 把中文 Markdown、纯文本或粗糙笔记转换为微信公众号兼容的内联样式 HTML，并默认使用星禾个人风格排版。保持 skill 精简：稳定渲染交给脚本，细节规则按需读取 references。
+把文章转换为微信公众号兼容的内联样式 HTML，并稳定输出星禾个人风格。默认只做排版，不自动生图，不自动发布。
 
 ## 按需读取
 
-- `references/wechat-engine.md`：脚本入口、必要配置、输出行为和微信兼容说明。
-- `references/xinghe-layout-style.md`：星禾排版风格、默认主题、配色和反模式。
-- `references/content-structure-rules.md`：标题、列表、callout、引用、金句卡、画廊、长图、表格和代码块的使用边界。
-- `references/cover-and-publish.md`：封面衔接、发布确认、凭据边界和外部投递检查。
+- 脚本、配置或微信兼容问题：读取 `references/wechat-engine.md`。
+- 选择主题或判断视觉风格：读取 `references/xinghe-layout-style.md`。
+- 需要增强文章结构：读取 `references/content-structure-rules.md`。
+- 需要封面或发布：读取 `references/cover-and-publish.md`。
 
-## 默认工作流
+## 工作流
 
-### 1. 确认来源
+### 1. 读取文章
 
-接受文件路径、粘贴正文、Markdown 草稿或粗糙笔记。用户没有提供内容或路径时，先请用户提供文章来源。
+确认标题、文章类型、图片、代码、表格和链接。保留作者措辞，只补充阅读所需的标题、段落、列表、少量加粗和 callout。
 
-读取来源后，确认：
+### 2. 选择主题
 
-- 标题或可能的标题
-- 近似字数
-- 文章类型：分析、教程、产品/工具笔记、访谈、随笔、方法论或发布说明
-- 是否包含图片、代码、表格、链接或对话
+| 主题 | 适用内容 |
+|---|---|
+| `xinghe-light` | 默认；技术长文、产品分析、通用公众号文章 |
+| `xinghe-card` | 教程、清单、工具拆解、知识密度较高的文章 |
+| `xinghe-note` | 方法论、复盘、随笔和个人观察 |
 
-不要改写作者语气。只添加阅读和微信渲染需要的结构。
+用户未指定时使用 `xinghe-light`。只有用户要求比较时才打开三主题画廊。
 
-### 2. 准备 Markdown
+### 3. 安全排版
 
-先在工作副本上运行标点质检；除非用户明确要求修改源文件，否则不要直接改原稿。
-
-```bash
-python scripts/zh_punctuation_fix.py "<working-article.md>" --write
-```
-
-如果文章已有可用 Markdown 结构，保留原结构。若文章是纯文本或粗糙笔记，只添加必要结构标记：
-
-- 在真实主题转换处添加 `##` 标题
-- 在语义转换处拆段
-- 对真实并列项或步骤使用列表
-- 用 `**加粗**` 做少量扫读锚点
-- 只给高价值判断、技巧、风险或补充信息使用 callout
-
-把准备后的文件保存到配置输出目录或本次任务的临时输出目录。默认避免原地覆盖源草稿。
-
-### 3. 应用星禾排版
-
-默认使用 `xinghe-light` 主题。除非用户要求比较风格，否则优先直接渲染，不默认打开完整主题画廊。
+默认使用安全入口。它复制工作稿、在副本上修复中文标点，再调用渲染脚本，不修改源文件：
 
 ```bash
-python scripts/format.py --input "<prepared-article.md>" --theme xinghe-light
+python scripts/xinghe_format.py --input "<article.md>" --theme xinghe-light
 ```
 
-如果用户想比较备选风格，打开画廊并只推荐星禾兼容主题：
+比较三个主题：
 
 ```bash
-python scripts/format.py --input "<prepared-article.md>" --gallery --recommend xinghe-light fresh-card glass-light notion-doc
+python scripts/xinghe_format.py --input "<article.md>" --gallery
 ```
 
-测试或自动化检查时使用 `--no-open`。
+输出已存在时不要擅自覆盖；先更换输出目录，或获得确认后使用 `--force`。
 
-### 4. 封面与发布门禁
+### 4. 交付与门禁
 
-默认交付点是已检查的预览 HTML，用户可复制到微信公众号后台。
+默认交付 `preview.html` 和 `article.html`。如需封面，衔接 `xinghe-illustrations-skill`，先输出 prompt-only 或 manifest；真实生图涉及外部上传时必须确认。公众号封面比例为 `2.35:1`。
 
-如需封面，衔接 `xinghe-illustrations-skill`，默认只输出 prompt-only 或 manifest。只有用户明确授权真实生图和外部上传文章衍生内容后，才进入真实图片生成。公众号封面比例使用 `2.35:1`。
+调用 `scripts/publish.py` 前必须确认：
 
-发布前，绝不直接调用 `scripts/publish.py`。必须先确认：
-
-- 目标公众号或草稿箱目标
+- 目标公众号或草稿箱
 - 标题、作者、摘要和封面图
-- 要发布的文章目录
-- 披露范围
-- 是否允许使用本地配置的微信凭据
+- 文章目录与披露范围
+- 是否允许使用本地微信凭据
 
-不要把 AppID、AppSecret、API key、access token、permission code 或真实 endpoint 写入 skill 文档、示例、references 或最终回复。
+不在 Skill、文档、示例或回复中写入 AppID、AppSecret、API key 或 access token。
 
-## 默认主题策略
+## 必须暂停
 
-- 主主题：`xinghe-light`
-- 备选主题：`fresh-card`、`glass-light`、`notion-doc`
-- 默认保持个人风格稳定，不做花哨主题轮换。
-- 只有用户明确要求其他视觉方向时，才使用其他主题。
-
-## 必须暂停的情况
-
-遇到以下情况先暂停确认：
-
-- 缺少文章来源
-- 操作会原地修改源文件
-- 封面生成会上传本地内容或参考图
-- 发布会向微信或其他外部系统发送数据
-- 凭据缺失、仍是占位符，或被意外写入文件
-- 输出文件会覆盖已有交付物
+- 缺少文章来源。
+- 用户要求的操作会修改源稿。
+- 输出已存在且未获得覆盖确认。
+- 封面生成会上传本地内容或参考图。
+- 发布会向微信或其他外部系统发送数据。
+- 凭据缺失、仍是占位符或意外出现在待提交文件中。

@@ -31,7 +31,11 @@ import requests
 SCRIPT_DIR = Path(__file__).parent
 SKILL_DIR = SCRIPT_DIR.parent
 
-with open(SKILL_DIR / "config.json", encoding="utf-8") as f:
+CONFIG_PATH = SKILL_DIR / "config.json"
+if not CONFIG_PATH.exists():
+    CONFIG_PATH = SKILL_DIR / "config.example.json"
+
+with open(CONFIG_PATH, encoding="utf-8") as f:
     CONFIG = json.load(f)
 
 
@@ -182,7 +186,7 @@ def replace_all_images(html, article_dir, token):
                 os.unlink(local_path)  # 清理临时文件
                 if cdn_url:
                     replaced += 1
-                    print(f"  ✓ 外部图片: {src[:60]}...")
+                    print(f"  [ok] 外部图片: {src[:60]}...")
                     return f'src="{cdn_url}"'
             failed += 1
             return match.group(0)
@@ -196,7 +200,7 @@ def replace_all_images(html, article_dir, token):
             cdn_url = upload_content_image(token, str(local_path))
             if cdn_url:
                 replaced += 1
-                print(f"  ✓ {os.path.basename(src)}")
+                print(f"  [ok] {os.path.basename(src)}")
                 return f'src="{cdn_url}"'
             else:
                 failed += 1
@@ -210,7 +214,7 @@ def replace_all_images(html, article_dir, token):
     return html, replaced, failed
 
 
-def push_draft(token, title, content, thumb_media_id, author="小互", source_url=""):
+def push_draft(token, title, content, thumb_media_id, author="", source_url=""):
     """推送文章到草稿箱"""
     url = f"https://api.weixin.qq.com/cgi-bin/draft/add?access_token={token}"
 
@@ -292,12 +296,12 @@ def main():
     parser.add_argument("--theme", default=None,
                         help="排版主题（仅 --input 模式有效，默认读取 gallery 选中的主题）")
     parser.add_argument("--author", "-a",
-                        default=CONFIG.get("wechat", {}).get("author", "小互"),
+                        default=CONFIG.get("wechat", {}).get("author", ""),
                         help="作者名")
     parser.add_argument("--source-url", "-s", default="",
                         help="原文链接（content_source_url，公众号文末「阅读原文」按钮指向）")
     parser.add_argument("--dry-run", action="store_true",
-                        help="只做排版和图片上传，不推送草稿箱（用于测试）")
+                        help="仅做本地发布前检查，不获取 token、不上传图片、不推送草稿")
     parser.add_argument("--yes", "-y", action="store_true",
                         help="非交互模式：所有确认提示自动回 y（部分图片上传失败继续、其他）")
     args = parser.parse_args()
@@ -376,21 +380,44 @@ def main():
     # 标题长度预检：公众号标题硬限 64 字符，超过 30 字会影响展示
     title_len = len(title)
     if title_len > 64:
-        print(f"\n❌ 标题过长: {title_len} 字符 > 64（公众号 API 硬限）")
+        print(f"\n[error] 标题过长: {title_len} 字符 > 64（公众号 API 硬限）")
         print(f"   请缩短标题再发布。建议 30 字以内，保留 2-3 个核心锚点。")
         sys.exit(1)
     elif title_len > 30:
-        print(f"\n⚠️  标题偏长: {title_len} 字符 > 30（公众号展示可能截断）")
+        print(f"\n[warn] 标题偏长: {title_len} 字符 > 30（公众号展示可能截断）")
         if not args.yes:
             resp = input("  继续用这个标题？(y/N) ").strip().lower()
             if resp != "y":
                 print("  已中止，请缩短标题后重试")
                 sys.exit(0)
 
+    # dry-run 必须完全离线：只检查发布包，不获取 token 或上传任何内容。
+    if args.dry_run:
+        image_dir = article_dir / "images"
+        local_count = len(list(image_dir.iterdir())) if image_dir.exists() else 0
+        external_count = len(re.findall(r'src="(https?://[^"]+)"', html))
+        external_count -= len(re.findall(r'src="https?://mmbiz\.qpic\.cn[^"]*"', html))
+        cover_path = find_cover_image(article_dir, args.cover)
+        if not cover_path:
+            print("\n错误: 未找到封面图。请用 --cover 指定，或在 images/ 目录放置封面。")
+            sys.exit(1)
+
+        wechat = CONFIG.get("wechat", {})
+        credentials_ready = bool(wechat.get("app_id") and wechat.get("app_secret"))
+        print("\n[dry-run] 本次只做本地检查，不会访问微信 API")
+        print(f"  文章目录: {article_dir.resolve()}")
+        print(f"  标题: {title} ({title_len} 字符)")
+        print(f"  作者: {author or '未填写'}")
+        print(f"  封面: {cover_path.resolve()}")
+        print(f"  正文图片: {local_count} 本地 + {external_count} 外部")
+        print(f"  HTML 长度: {len(html)} 字符")
+        print(f"  微信凭据: {'已配置' if credentials_ready else '未配置，真实发布前需要补齐'}")
+        return
+
     # ── 4. 获取 token ────────────────────────────────────────────────
     print(f"\n获取 access_token...")
     token = get_access_token()
-    print("✓ token 获取成功")
+    print("[ok] token 获取成功")
 
     # ── 5. 上传正文图片 ──────────────────────────────────────────────
     # 统计图片数量（本地 + 外部）
@@ -426,7 +453,7 @@ def main():
         print(f"\n上传封面图: {cover_path.name}")
         thumb_media_id = upload_thumb_image(token, str(cover_path))
         if thumb_media_id:
-            print(f"  ✓ media_id: {thumb_media_id[:20]}...")
+            print(f"  [ok] media_id: {thumb_media_id[:20]}...")
         else:
             print("  ✗ 封面上传失败")
             thumb_media_id = None

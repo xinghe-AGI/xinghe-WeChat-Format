@@ -1,170 +1,130 @@
 # xinghe-WeChat-Format
 
-这是基于 [`xiaohuailabs/xiaohu-wechat-format`](https://github.com/xiaohuailabs/xiaohu-wechat-format) 改造的个人公众号排版 skill。机器可读 skill 名称为 `xinghe-wechat-format`，展示名为 `xinghe-WeChat-Format`。它保留原项目的微信兼容 HTML 渲染、主题系统、标点修复和草稿箱发布能力，并把默认体验收束为星禾个人 IP 风格：冷白/浅蓝灰底、深蓝黑正文、橙色行动线、白板/卡片/便签式信息层。
+面向个人公众号创作的星禾风格排版 Skill。它把 Markdown 文章转换为微信公众号兼容的内联样式 HTML，只保留三种用途清晰的星禾主题，并可在确认后衔接封面与草稿箱发布。
 
-## 它能做什么
+本项目基于 [xiaohuailabs/xiaohu-wechat-format](https://github.com/xiaohuailabs/xiaohu-wechat-format) 改造，保留原项目的微信渲染、标点检查和发布能力。
 
-- 把 Markdown、纯文本或粗糙笔记转换成微信公众号可复制的内联样式 HTML。
-- 默认使用 `xinghe-light` 主题，形成稳定的个人内容视觉。
-- 在不改写作者语气的前提下，补充必要标题、列表、callout、引用和图片容器。
-- 可按需衔接 `xinghe-illustrations-skill` 生成公众号封面 brief、prompt-only 或 manifest。
-- 在用户明确确认后，可使用 `publish.py` 发布到微信公众号草稿箱。
+## 三个主题
 
-## 快速开始
+| 主题 | 风格 | 适合内容 |
+|---|---|---|
+| `xinghe-light` | 冷白长文、橙色行动线、轻量白板标签 | 技术长文、产品分析、通用文章 |
+| `xinghe-card` | 分区和卡片更明确、步骤感更强 | 教程、清单、工具拆解 |
+| `xinghe-note` | 边界更轻、段落更松弛、便签引用 | 方法论、复盘、随笔 |
 
-安装依赖：
+画廊只展示这三个主题，不再附带通用主题库。
+
+## 安装
 
 ```bash
-pip install markdown requests
+pip install -r requirements.txt
 ```
 
-准备配置：
+仅排版时可以直接运行，不必先创建 `config.json`。需要设置输出目录、作者或公众号凭据时，再复制私有配置：
 
 ```bash
 cp config.example.json config.json
 ```
 
-建议把 `config.json` 调整为：
+`config.json` 已被 Git 忽略。真实 AppID、AppSecret、API key 和 token 不应写入文档或提交记录。
 
-```json
-{
-  "output_dir": "outputs/wechat-format",
-  "vault_root": ".",
-  "image_search_paths": [],
-  "settings": {
-    "default_theme": "xinghe-light",
-    "auto_open_browser": true,
-    "header_author_label": ""
-  },
-  "wechat": {
-    "app_id": "",
-    "app_secret": "",
-    "author": ""
-  }
-}
-```
+## 快速使用
 
-真实 AppID、AppSecret、API key 和 token 只放在私有本地配置或环境变量中，不要写进文档、提交记录或聊天内容。
-
-## 排版文章
-
-直接使用星禾主题：
+默认主题：
 
 ```bash
-python scripts/format.py --input article.md --theme xinghe-light
+python scripts/xinghe_format.py --input article.md
 ```
 
-测试时不打开浏览器：
+指定知识卡片主题：
 
 ```bash
-python scripts/format.py --input article.md --theme xinghe-light --no-open --output outputs/wechat-format
+python scripts/xinghe_format.py --input article.md --theme xinghe-card
 ```
 
-如需比较少量备选风格：
+比较全部三个主题：
 
 ```bash
-python scripts/format.py --input article.md --gallery --recommend xinghe-light fresh-card glass-light notion-doc
+python scripts/xinghe_format.py --input article.md --gallery
 ```
 
-生成后打开 `preview.html`，点击“复制到微信”，再粘贴到微信公众号后台。
+自动化或测试时不打开浏览器：
 
-## 推荐工作流
-
-1. 读取文章，确认标题、字数、文章类型和是否包含图片/代码/表格。
-2. 在工作副本上运行标点修复，不默认原地改源稿。
-3. 只补充必要 Markdown 结构：标题、段落、列表、少量加粗、少量 callout。
-4. 使用 `xinghe-light` 渲染预览 HTML。
-5. 如需封面，衔接 `xinghe-illustrations-skill`；真实生图前必须确认外部上传授权。
-6. 如需发布，确认目标公众号、标题、作者、摘要、封面图、文章目录和凭据使用权限后，再调用 `publish.py`。
-
-## 星禾主题风格
-
-`themes/xinghe-light.json` 的设计目标：
-
-- 冷白或极浅蓝灰背景。
-- 深蓝黑正文，阅读稳定。
-- 暖橙色用于关键词、行动线和少量强调。
-- 低饱和绿、黄、紫、珊瑚粉用于步骤、提示、分支和风险。
-- 标题像白板标签，引用像便签，重点块像内容卡片，图片外框像轻量工作台。
-
-避免商业海报、厚重渐变、赛博 UI、大面积黄色、儿童贴纸感和密集 PPT 信息块。
-
-## 常用 Markdown 元素
-
-```markdown
-> [!important] 核心判断
-> 这里写真正需要读者记住的结论。
-
-> [!tip] 小技巧
-> 这里写一个实用方法。
-
-:::gallery[截图组]
-![](img1.png)
-![](img2.png)
-![](img3.png)
-:::
-
-:::longimage[流程长图]
-![](flow.png)
-:::
+```bash
+python scripts/xinghe_format.py --input article.md --no-open --output outputs/wechat-format
 ```
 
-使用边界：
+安全入口会：
 
-- callout 总数不超过 4 个。
-- 加粗每段不超过 2 处。
-- 表格不超过 4 列。
-- `:::gallery` 只用于 3 张以上相关图片。
-- `:::longimage` 只用于真实长截图、流程图或架构图。
+1. 把文章复制到 `<output>/_working/`。
+2. 只在工作副本上修复中文标点。
+3. 保留源稿相对图片的解析位置。
+4. 生成 `preview.html` 和 `article.html`。
+5. 发现已有输出时停止；确认覆盖后才使用 `--force`。
 
-## 发布到微信公众号草稿箱
+## 输出结构
 
-发布前必须在 `config.json` 或安全环境变量中配置公众号凭据，并确认公众号后台 IP 白名单。
+```text
+outputs/wechat-format/
+  _working/
+    article.md
+  article/
+    article.html
+    preview.html
+    images/
+```
 
-只在用户确认所有发布信息后运行：
+打开 `preview.html`，点击“复制到微信”，再粘贴到微信公众号后台。
+
+## 封面与发布
+
+封面统一衔接 `xinghe-illustrations-skill`。默认先生成 prompt-only 或 manifest；真实生图上传文章内容或参考图前需要确认。公众号封面比例使用 `2.35:1`。
+
+发布前确认目标公众号、标题、作者、摘要、封面图、文章目录和凭据使用权限，然后运行：
+
+先做完全离线的发布前检查：
+
+```bash
+python scripts/publish.py --dir "<rendered-article-dir>" --cover "<cover-image-path>" --dry-run --yes
+```
+
+确认无误后再运行真实发布：
 
 ```bash
 python scripts/publish.py --dir "<rendered-article-dir>" --cover "<cover-image-path>"
 ```
 
-支持参数可查看：
+发布是外部投递，不会由默认排版流程自动触发。
 
-```bash
-python scripts/publish.py --help
-```
-
-## 文件结构
+## 主要文件
 
 ```text
-SKILL.md                         # Codex 调用入口，保持精简
-references/
-  wechat-engine.md               # 脚本和微信兼容说明
-  xinghe-layout-style.md         # 星禾排版风格
-  content-structure-rules.md     # 内容结构规则
-  cover-and-publish.md           # 封面与发布门禁
+SKILL.md
+agents/openai.yaml
 themes/
-  xinghe-light.json              # 星禾默认主题
+  xinghe-light.json
+  xinghe-card.json
+  xinghe-note.json
 scripts/
-  format.py                      # Markdown 转微信 HTML
-  publish.py                     # 发布到公众号草稿箱
-  zh_punctuation_fix.py          # 中文标点质检
-  theme_lint.py                  # 主题校验
+  xinghe_format.py
+  format.py
+  zh_punctuation_fix.py
+  theme_lint.py
+  publish.py
+references/
+  wechat-engine.md
+  xinghe-layout-style.md
+  content-structure-rules.md
+  cover-and-publish.md
 ```
 
 ## 验证
 
 ```bash
-python scripts/theme_lint.py xinghe-light
-python scripts/format.py --input article.md --theme xinghe-light --no-open
+python -X utf8 -m unittest tests.test_skill_contract -v
+python scripts/theme_lint.py
 ```
 
-在 Windows 终端遇到中文或勾号输出编码问题时，可先设置：
+## 许可与来源
 
-```powershell
-$env:PYTHONUTF8='1'
-$env:PYTHONIOENCODING='utf-8'
-```
-
-## 来源与许可
-
-本工作区副本基于 `xiaohuailabs/xiaohu-wechat-format` 改造，保留原项目 MIT License。星禾风格规则来自本机 `xinghe-illustrations-skill` 的个人 IP 视觉系统。
+本项目基于 `xiaohuailabs/xiaohu-wechat-format` 改造，沿用原项目许可与归因。星禾视觉规则来自 `xinghe-illustrations-skill` 的个人 IP 风格系统。

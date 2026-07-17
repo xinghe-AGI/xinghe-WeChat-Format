@@ -355,7 +355,7 @@ body {
 {{THEME_PREVIEWS}}
             </div>
         </div>
-        <button class="action-btn" id="confirmBtn" onclick="confirmAndCopy()">✓ 确认 — 复制选择，去 Claude Code 粘贴</button>
+        <button class="action-btn" id="confirmBtn" onclick="confirmAndCopy()">✓ 确认并复制选择</button>
         <button class="action-btn" id="copyBtn" onclick="applyTheme()" style="background:#86868b;margin-top:8px;">复制内容到剪贴板 去公众号粘贴</button>
     </div>
 
@@ -406,7 +406,7 @@ function switchTheme(themeId) {
     // 重置确认按钮
     var confirmBtn = document.getElementById('confirmBtn');
     if (confirmBtn) {
-        confirmBtn.textContent = '✓ 确认 — 复制选择，去 Claude Code 粘贴';
+        confirmBtn.textContent = '✓ 确认并复制选择';
         confirmBtn.classList.remove('copied');
     }
 }
@@ -463,7 +463,7 @@ function confirmAndCopy() {
     // 复制到剪贴板
     navigator.clipboard.writeText(command).then(function() {
         var btn = document.getElementById('confirmBtn');
-        btn.textContent = '✓ 已复制「' + command + '」— 去 Claude Code 粘贴即可';
+        btn.textContent = '✓ 已复制「' + command + '」';
         btn.classList.add('copied');
     }).catch(function() {
         // fallback
@@ -474,7 +474,7 @@ function confirmAndCopy() {
         document.execCommand('copy');
         document.body.removeChild(ta);
         var btn = document.getElementById('confirmBtn');
-        btn.textContent = '✓ 已复制「' + command + '」— 去 Claude Code 粘贴即可';
+        btn.textContent = '✓ 已复制「' + command + '」';
         btn.classList.add('copied');
     });
 }

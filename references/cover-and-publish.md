@@ -44,11 +44,16 @@
 
 ## 发布命令
 
-只有确认后才运行：
+先做完全离线的发布前检查；该命令不得获取 token、上传图片或创建草稿：
+
+```bash
+python scripts/publish.py --dir "<rendered-article-dir>" --cover "<cover-image-path>" --dry-run --yes
+```
+
+只有确认后才运行真实发布：
 
 ```bash
 python scripts/publish.py --dir "<rendered-article-dir>" --cover "<cover-image-path>"
 ```
 
 API 返回成功不等于用户已能阅读草稿。报告命令结果，并在必要时请用户到微信公众号后台验证草稿是否可见。
-

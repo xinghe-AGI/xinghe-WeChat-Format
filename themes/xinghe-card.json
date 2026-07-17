@@ -1,0 +1,47 @@
+{
+  "extends": "xinghe-light",
+  "name": "星禾知识卡片",
+  "description": "在星禾冷白基础上加强分区、步骤与重点块，适合教程、清单、工具拆解和知识密度较高的文章。",
+  "styles": {
+    "wrapper": {
+      "padding": "16px 12px"
+    },
+    "h1": {
+      "border_top": "5px solid #E46F2E",
+      "padding": "20px 18px 17px"
+    },
+    "h2": {
+      "margin_top": "30px",
+      "padding": "10px 14px",
+      "border_left": "4px solid #E46F2E",
+      "border_radius": "8px",
+      "background": "#FFFFFF",
+      "box_shadow": "0 3px 12px rgba(31, 42, 54, 0.05)"
+    },
+    "h3": {
+      "background": "#E8F1F8",
+      "border_style": "solid"
+    },
+    "blockquote": {
+      "background": "#FFF8DF",
+      "border_left": "5px solid #F2C94C"
+    },
+    "callout": {
+      "border_top": "1px solid rgba(73, 104, 130, 0.16)",
+      "box_shadow": "0 6px 18px rgba(31, 42, 54, 0.07)"
+    },
+    "table": {
+      "box_shadow": "0 4px 14px rgba(31, 42, 54, 0.05)"
+    }
+  },
+  "layout": "card",
+  "card": {
+    "bg": "#F6F9FC",
+    "card_bg": "#FFFFFF",
+    "card_texture": "none",
+    "card_texture_size": "0",
+    "card_border": "1px solid rgba(73, 104, 130, 0.14)",
+    "card_shadow": "0 6px 20px rgba(31, 42, 54, 0.06)",
+    "card_radius": "12px"
+  }
+}

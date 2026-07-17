@@ -1,0 +1,2 @@
+markdown>=3.5,<4
+requests>=2.31,<3

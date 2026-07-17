@@ -4,14 +4,15 @@
 
 ## 脚本入口
 
-- `scripts/zh_punctuation_fix.py`：渲染前修复中文正文附近的半角标点。
+- `scripts/xinghe_format.py`：默认安全入口；复制工作稿、修复标点并渲染。
+- `scripts/zh_punctuation_fix.py`：修复中文正文附近的半角标点，通常由安全入口调用。
 - `scripts/format.py`：把 Markdown 转换为微信公众号兼容预览 HTML 和可复制内联 HTML。
 - `scripts/publish.py`：在用户明确确认后，把已渲染文章目录发布到微信公众号草稿箱。
 - `scripts/theme_lint.py`：校验主题字号层级和移动端可读性。
 
 ## 必要配置
 
-`scripts/format.py` 会从 skill 根目录读取 `config.json`。本地配置必须保持私有，不要提交真实凭据。
+排版时优先读取私有 `config.json`；不存在时自动使用 `config.example.json` 的安全默认值。发布仍需要在私有配置中提供真实公众号凭据。
 
 安全本地默认值：
 
@@ -38,19 +39,19 @@
 直接使用星禾主题：
 
 ```bash
-python scripts/format.py --input "<article.md>" --theme xinghe-light
+python scripts/xinghe_format.py --input "<article.md>" --theme xinghe-light
 ```
 
 打开限定推荐的主题画廊：
 
 ```bash
-python scripts/format.py --input "<article.md>" --gallery --recommend xinghe-light fresh-card glass-light notion-doc
+python scripts/xinghe_format.py --input "<article.md>" --gallery
 ```
 
 自动化或测试运行：
 
 ```bash
-python scripts/format.py --input "<article.md>" --theme xinghe-light --no-open --output "<output-dir>"
+python scripts/xinghe_format.py --input "<article.md>" --theme xinghe-light --no-open --output "<output-dir>"
 ```
 
 ## 微信兼容说明
